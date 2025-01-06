@@ -22,7 +22,7 @@ const HomePage = () => {
   //プロジェクト一覧を取得する非同期関数
   const fetchProjects = async () => {
     try {
-      const response = await fetch("https://func-rag.azurewebsites.net/projects");
+      const response = await fetch("http://localhost:7071/projects");
       const data = await response.json();
       setProjects(
         Array.isArray(data.projects) ? data.projects.filter((p) => p && p.project_name) : []
@@ -63,28 +63,46 @@ const HomePage = () => {
 
     try {
       // APIエンドポイントにユーザーの質問を送信
-      const response = await fetch("https://func-rag.azurewebsites.net/answer", {
+      const response = await fetch("http://localhost:7071/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_question: text, project_name: selectedProject }),
       });
       const data = await response.json();
-      const { answer, documentUrl, documentName, last_modified } = data;
+      const { answer, documentUrl=[], documentName=[], last_modified=[] } = data;
       
-      // 回答の各プロパティを設定．
+      // 回答メッセージの生成
       const answerMessage = {
         type: "answer",
         content: (
           <div>
             <p><strong>回答:</strong> {answer}</p>
-            <p><strong>ファイル名:</strong> {documentName}</p>
-            <p><strong>最終更新時刻:</strong> {last_modified}</p>
-            <p>
-              <strong>URL:</strong> <a href={documentUrl} target="_blank" rel="noopener noreferrer">{documentUrl}</a>
-            </p>
+            {documentName.length > 0 && (
+              <div>
+                <strong>関連ドキュメント:</strong>
+                <ul>
+                  {documentName.slice(0, 3).map((name, index) => (
+                    <li key={index}>
+                      {name}（
+                      {documentUrl[index] ? (
+                        <a href={documentUrl[index]} target="_blank" rel="noopener noreferrer">
+                          {documentUrl[index]}
+                        </a>
+                      ) : (
+                        "URLなし"
+                      )}
+                      ）
+                      <br />
+                      最終更新: {last_modified[index] || "更新日時なし"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ),
       };
+
       // 新しいメッセージをmessagesとchatHistoryに追加
       setMessages((prevMessages) => [...prevMessages, answerMessage]);
       setChatHistory((prevHistory) => [
