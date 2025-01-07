@@ -224,10 +224,12 @@ const HomePage = () => {
           <Box
             sx={{
               flexGrow: 1,
-              overflowY: "auto", 
-              padding: "16px",
+              marginRight:"-10px",
+              padding: "8px",
               backgroundColor: "white",
-              borderBottom: "none", // フッターとの境界線を削除
+              borderBottom: "none", // フッターとの境界線を削除,
+              overflowX: "hidden", // スクロールをなくす設定
+              overflowY: "hidden", // スクロールをなくす設定
             }}
           >
             <ChatArea messages={messages} />
