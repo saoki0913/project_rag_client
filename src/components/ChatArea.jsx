@@ -1,14 +1,22 @@
-import React from "react";
-import { Box, Typography, Paper, Avatar } from "@mui/material";
+import React, { useEffect, useRef } from "react";
+import { Box, Typography, Paper, Avatar, CircularProgress } from "@mui/material";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 
-const ChatArea = ({ messages }) => {
+const ChatArea = ({ messages, isGenerating }) => {
+  // メッセージの最後にスクロールするための参照
+  const messagesEndRef = useRef(null);
+
+  // メッセージや解答生成中フラグが更新されたときにスクロールする
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isGenerating]);
+
   return (
     <Box
       sx={{
         padding: "8px",
         overflowY: "auto", // スクロール可能に設定
-        height: "100%",
+        height: "100%",    // チャットエリア全体を埋める
       }}
     >
       {messages.map((message, index) => (
@@ -43,8 +51,9 @@ const ChatArea = ({ messages }) => {
               padding: "10px 15px",
               borderRadius: "10px",
               maxWidth: "70%", // 吹き出しの幅を調整
-              backgroundColor: message.type === "answer" ? "#f5f5f5" : "#FAFAFA", // 回答は薄いグレー、質問は白
+              backgroundColor: message.type === "answer" ? "#f5f5f5" : "#ffffff", // 回答は薄いグレー、質問は白
               wordBreak: "break-word", // URLや長い単語が吹き出し内で折り返される
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
             }}
           >
             <Typography
@@ -60,6 +69,56 @@ const ChatArea = ({ messages }) => {
           </Paper>
         </Box>
       ))}
+
+      {/* 解答生成中のエフェクト */}
+      {isGenerating && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "8px",
+          }}
+        >
+          <Avatar
+            sx={{
+              bgcolor: "#f5f5f5",
+              color: "text.primary",
+              width: 32,
+              height: 32,
+            }}
+          >
+            <SupportAgentIcon fontSize="small" />
+          </Avatar>
+          <Paper
+            sx={{
+              padding: "10px 15px",
+              borderRadius: "10px",
+              maxWidth: "70%",
+              backgroundColor: "#f5f5f5",
+              wordBreak: "break-word",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <CircularProgress size={16} sx={{ color: "#00796b" }} />
+            <Typography
+              variant="body2"
+              sx={{
+                fontSize: "0.85rem",
+                color: "text.primary",
+              }}
+            >
+              回答を生成中
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+
+      {/* スクロール位置を確保するためのダミー要素 */}
+      <div ref={messagesEndRef} />
     </Box>
   );
 };

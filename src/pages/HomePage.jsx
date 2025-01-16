@@ -3,9 +3,11 @@ import SideBar from "../components/SideBar";
 import TextInput from "../components/TextInput";
 import ChatArea from "../components/ChatArea";
 import logo from "../assets/logo.png"; // ロゴ画像をインポート
-import { Box, CircularProgress, Typography, TextField, Button } from "@mui/material";
+import { Box, TextField, Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { GlobalStyles } from '@mui/material';
+
+
 
 
 const HomePage = () => {
@@ -13,7 +15,9 @@ const HomePage = () => {
   const [messages, setMessages] = useState([]); //現在のチャットセッションのメッセージリスト
   const [isGenerating, setIsGenerating] = useState(false);//メッセージの応答生成中かを示すフラグ
   const [projects, setProjects] = useState([]);//利用可能なプロジェクト一覧
+  const [folders, setFolders] = useState([]);//利用可能なフォルダ一覧
   const [selectedProject, setSelectedProject] = useState("ALL");//現在選択されているプロジェクト名
+  const [selectedFolder, setSelectedFolder] = useState("all");//現在選択されているフォルダ名
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);//サイドバーが開いているかを示すフラグ
   const hasDisplayedWarning = useRef(false); // 警告表示を追跡するフラグ
 
@@ -31,11 +35,36 @@ const HomePage = () => {
       console.error("エラー: プロジェクト一覧の取得に失敗しました。", error);
     }
   };
+
+  // フォルダ一覧を取得する非同期関数
+  const fetchFolders = async () => {
+    try {
+      const response = await fetch("http://localhost:7071/get_spo_folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          project_name: selectedProject
+         }),
+      });
+      const data = await response.json();
+
+      // 'folders' フィールドが配列か確認して状態にセット
+      setFolders(Array.isArray(data.folders) ? data.folders : []);
+    } catch (error) {
+      console.error("エラー: フォルダ一覧の取得に失敗しました。", error);
+    }
+  };
+
   
   // ドロップダウンでプロジェクトを選択した際に呼び出され,selectedProjectを更新する関数
   const handleSelectProject = (event) => {
     setSelectedProject(event.target.value);
     hasDisplayedWarning.current = false; // プロジェクト選択時にフラグをリセット
+  };
+
+  // ドロップダウンでプロジェクトを選択した際に呼び出され,selectedProjectを更新する関数
+  const handleSelectFolders = (event) => {
+    setSelectedFolder(event.target.value);
   };
 
   // メッセージ入力欄がフォーカスされたときにプロジェクト選択を確認する関数
@@ -66,7 +95,11 @@ const HomePage = () => {
       const response = await fetch("http://localhost:7071/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_question: text, project_name: selectedProject }),
+        body: JSON.stringify({ 
+          user_question: text, 
+          project_name: selectedProject,
+          ...(selectedFolder && { folder_name: selectedFolder }) // 選択されていれば追加
+         }),
       });
       const data = await response.json();
       const { answer, documentUrl=[], documentName=[], last_modified=[] } = data;
@@ -202,6 +235,36 @@ const HomePage = () => {
                   </option>
                 ))}
               </TextField>
+              {selectedProject !== "ALL" && (
+                <TextField
+                  select
+                  label="フォルダ、ファイルを選択"
+                  value={selectedFolder}
+                  onClick={fetchFolders}
+                  onChange={handleSelectFolders}
+                  size="small"
+                  sx={{
+                    backgroundColor: "#fff",
+                    borderRadius: "4px",
+                    width: "150px",
+                    minWidth: "120px"
+                  }}
+                  InputLabelProps={{
+                    style: { fontSize: "0.75rem" },
+                  }}
+                  SelectProps={{
+                    native: true,
+                    sx: { fontSize: "0.75rem" },
+                  }}
+                >
+                  <option value="all">未選択</option>
+                  {folders.map((folder, index) => (
+                    <option key={index} value={folder}>
+                      {folder}
+                    </option>
+                  ))}
+                </TextField>
+              )}
 
               <Button
                 variant="contained"
@@ -232,7 +295,7 @@ const HomePage = () => {
               overflowY: "hidden", // スクロールをなくす設定
             }}
           >
-            <ChatArea messages={messages} />
+            <ChatArea messages={messages} isGenerating={isGenerating} />
           </Box>
 
           {/* フッター部分 */}
@@ -240,22 +303,14 @@ const HomePage = () => {
             sx={{
               padding: "16px",
               display: "flex",
-              // flexShrink: 0, // フッターがスクロールの影響を受けないように
-              backgroundColor: "white", // メインコンテンツと同じ背景色に統一
-              borderTop: "none", // 境界線を削除
+              backgroundColor: "white",
+              borderTop: "none",
             }}
           >
-            {isGenerating ? (
-              <Box display="flex" alignItems="center" gap="8px">
-                <CircularProgress size={24} />
-                <Typography>回答生成中...</Typography>
-              </Box>
-            ) : (
-              <TextInput 
-                onSendMessage={handleSendMessage}
-                onFocusMessageInput={handleFocusMessageInput} // フォーカス時にプロジェクト選択の確認
-              />
-            )}
+            <TextInput
+              onSendMessage={handleSendMessage}
+              onFocusMessageInput={handleFocusMessageInput} // フォーカス時にプロジェクト選択の確認
+            />
           </Box>
         </Box>
       </Box>

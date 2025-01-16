@@ -12,11 +12,15 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Alert
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import SideBar from "../components/SideBar";
 import IconButton from "@mui/icons-material/Delete";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteDialog from "../components/DeleteDialog"; // ダイアログをインポート
+
+
 // import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 import Tooltip from "@mui/material/Tooltip";
@@ -29,7 +33,9 @@ const ProjectPage = () => {
   const [spoUrl, setSpoUrl] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [successMessage, setSuccessMessage] = useState("");
+  const [alert, setAlert] = useState({ type: "", message: "" }); // Alertの状態管理
+  const [openDialog, setOpenDialog] = useState(false); // ダイアログの状態管理
+  const [selectedProject, setSelectedProject] = useState(null); // 削除対象プロジェクト
 
   const navigate = useNavigate();
 
@@ -42,7 +48,7 @@ const ProjectPage = () => {
         Array.isArray(data.projects) ? data.projects.filter((p) => p && p.project_name) : []
       );
     } catch (error) {
-      console.error("エラー: プロジェクト一覧の取得に失敗しました。", error);
+      setAlert({ type: "error", message: "プロジェクト一覧の取得に失敗しました。" });
     } finally {
       setLoading(false);
       setIsUpdating(false);
@@ -53,45 +59,56 @@ const ProjectPage = () => {
     fetchProjects();
   }, []);
 
+  const openDeleteDialog = (projectName) => {
+    setSelectedProject(projectName);
+    setOpenDialog(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setOpenDialog(false);
+    setSelectedProject(null);
+  };
+
 
   const handleDeleteProject = async (projectName) => {
-    //削除前に確認ダイアログを表示
-    if (!window.confirm(`本当に「${projectName}」を削除しますか？`)) return; 
+    if (!selectedProject) return;
 
     try {
-      //削除リクエストを送信
+      // 削除リクエストを送信
       const response = await fetch("http://localhost:7071/delete_project", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_name: projectName }),
       });
-
+  
       if (response.ok) {
-        // 削除対象のプロジェクトをフロントエンドの状態管理から削除
+        // 削除成功時
         setProjects((prevProjects) =>
           prevProjects.filter((project) => project.project_name !== projectName)
         );
-        alert(`プロジェクト「${projectName}」を削除しました。`);
+        setAlert({ type: "success", message: `プロジェクト「${projectName}」を削除しました。` });
       } else {
+        // サーバーからエラーレスポンスを受け取った場合
         const errorData = await response.json();
-        console.error("削除失敗:", errorData);
-        alert(`プロジェクト「${projectName}」の削除に失敗しました。`);
+        setAlert({ type: "error", message: `削除失敗: ${errorData.message || "不明なエラーが発生しました。"}` });
       }
     } catch (error) {
-      console.error("エラー: プロジェクト削除に失敗しました。", error);
-      alert("プロジェクト削除中にエラーが発生しました。");
+      // リクエストが失敗した場合
+      setAlert({ type: "error", message: "プロジェクト削除中にエラーが発生しました。" });
+    } finally {
+      closeDeleteDialog();
     }
   };
+  
 
 
   const handleRegisterProject = async () => {
     if (!projectName || !spoUrl) {
-      alert("プロジェクト名とSharePoint URLを入力してください。");
+      setAlert({ type: "error", message: "プロジェクト名とSharePoint URLを入力してください。" });
       return;
     }
 
     setIsRegistering(true);
-    setSuccessMessage(""); // メッセージをリセット
     try {
       const response = await fetch("http://localhost:7071/resist_project", {
         method: "POST",
@@ -106,8 +123,7 @@ const ProjectPage = () => {
       ]);
       
       // 成功メッセージを表示
-      setSuccessMessage(`プロジェクト「${projectName}」が正常に登録されました。`);
-      setTimeout(() => setSuccessMessage(""), 5000); // 5秒後に消える
+      setAlert({ type: "success", message: "プロジェクトの登録に成功しました。" });
 
       // プロジェクトの一覧を再取得
       await fetchProjects();
@@ -152,37 +168,48 @@ const ProjectPage = () => {
           padding: "8px",
         }}
       >
+        {/* Alert表示エリア */}
+        {alert.message && (
+          <Alert
+            severity={alert.type}
+            onClose={() => setAlert({ type: "", message: "" })}
+            sx={{ marginBottom: 2 }}
+          >
+            {alert.message}
+          </Alert>
+        )}
+
         <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
           <Box
             sx={{
               display: "flex",
               flexDirection: "column",
-              gap: 1,
+              gap: 1.5, // 全体の間隔を少し広げる
               width: "200px",
               border: "1px solid #ddd",
               borderRadius: 1.5,
-              padding: 1,
+              padding: 2, // 内側の余白を調整
               backgroundColor: "#f9f9f9",
             }}
           >
-            <Typography variant="h6" sx={{ fontSize: "0.9rem", fontWeight: "bold" }} gutterBottom>
+            <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: "bold" }} gutterBottom>
               プロジェクト登録
             </Typography>
             <TextField
               label="プロジェクト名"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              size="small"
-              sx={{ fontSize: "0.75rem" }}
-              InputLabelProps={{ style: { fontSize: "0.75rem" } }}
+              // size="small"
+              sx={{ fontSize: "0.75rem", mt: 1 }} // 各入力エリアの上部余白を調整
+              InputLabelProps={{ style: { fontSize: "1rem" } }}
             />
             <TextField
               label="SharePoint URL"
               value={spoUrl}
               onChange={(e) => setSpoUrl(e.target.value)}
-              size="small"
-              sx={{ fontSize: "0.75rem" }}
-              InputLabelProps={{ style: { fontSize: "0.75rem" } }}
+              // size="small"
+              sx={{ fontSize: "0.75rem", mt: 1 }} // 前の入力エリアとの距離を設定
+              InputLabelProps={{ style: { fontSize: "1rem" } }}
             />
             <Button
               variant="contained"
@@ -190,24 +217,22 @@ const ProjectPage = () => {
               disabled={isRegistering}
               sx={{
                 fontSize: "0.75rem",
-                padding: "4px 8px",
-                backgroundColor: "#333333"
+                padding: "6px 12px", // ボタン内の余白を調整
+                mt: 1.5, // ボタンと入力エリアの間隔を広げる
+                backgroundColor: isRegistering ? "#999999" : "#333333",
+                color: "#fff",
               }}
+              startIcon={
+                isRegistering && (
+                  <CircularProgress
+                    size={16}
+                    sx={{ color: "#ffffff" }} // ボタン内のスピナーの色を設定
+                  />
+                )
+              }
             >
               {isRegistering ? "登録中..." : "登録"}
             </Button>
-              {successMessage && (
-                <Typography
-                  sx={{
-                    color: "#228B22", // 深緑色
-                    fontSize: "14px", // フォントサイズ
-                    fontWeight: "bold", // 太字
-                    marginTop: "10px", // 上部の余白
-                  }}
-                >
-                  {successMessage}
-                </Typography>
-              )}
           </Box>
 
           <Box sx={{ flexGrow: 1 }}>
@@ -298,7 +323,7 @@ const ProjectPage = () => {
                             <IconButton
                               size="small"
                               color="#333333"
-                              onClick={() => handleDeleteProject(project.project_name)}
+                              onClick={() => openDeleteDialog(project.project_name)}
                               sx={{ padding: "0px" }}
                             >
                               <DeleteIcon sx={{ fontSize: "1rem" }} />
@@ -315,6 +340,13 @@ const ProjectPage = () => {
             )}
           </Box>
         </Box>
+        {/* 削除確認ダイアログ */}
+        <DeleteDialog
+        open={openDialog}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteProject}
+        projectName={selectedProject}
+      />
       </Box>
     </Box>
   );
