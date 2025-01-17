@@ -28,7 +28,7 @@ const ProjectTable = ({ projects, onDelete, isUpdating, onUpdate }) => {
       >
         <Typography
           variant="h6"
-          sx={{ fontSize: "0.9rem", fontWeight: "bold", marginTop: "8px" }}
+          sx={{ fontSize: "1rem", fontWeight: "bold", marginTop: "16px" }}
           gutterBottom
         >
           プロジェクト一覧
@@ -73,12 +73,29 @@ const ProjectTable = ({ projects, onDelete, isUpdating, onUpdate }) => {
                     rel="noopener noreferrer"
                     style={{ textDecoration: "none", color: "#1a73e8" }}
                   >
-                    {project.spo_url}
+                    <Typography
+                      sx={{
+                        fontSize: "0.75rem",
+                        color: "#333333", // 通常時の色
+                        "&:hover": {
+                          color: "#1a73e8", // ホバー時の色
+                          textDecoration: "underline", // ホバー時の装飾
+                        },
+                        cursor: "pointer", // ホバー時にカーソルを変更
+                      }}
+                    >
+                      {project.spo_url}
+                    </Typography>
                   </a>
                 </TableCell>
                 <TableCell>
                   <Tooltip title="削除" placement="left">
-                    <IconButton size="small" onClick={() => onDelete(project.project_name)}>
+                    <IconButton 
+                      size="small" 
+                      color="#333333"
+                      onClick={() => onDelete(project.project_name)}
+                      sx={{ padding: "2px" }}
+                    >
                       <DeleteIcon sx={{ fontSize: "1rem" }} />
                     </IconButton>
                   </Tooltip>
