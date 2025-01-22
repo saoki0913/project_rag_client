@@ -7,6 +7,9 @@ import ProjectForm from "../components/ProjectForm";
 import ProjectTable from "../components/ProjectTable";
 import DeleteDialog from "../components/DeleteDialog";
 
+// APIのベースURLを設定
+const BASE_URL ="https://func-rag.azurewebsites.net";
+
 const ProjectPage = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +27,7 @@ const ProjectPage = () => {
   const fetchProjects = async () => {
     setIsUpdating(true);
     try {
-      const response = await fetch("http://localhost:7071/projects");
+      const response = await fetch(`${BASE_URL}/projects`);
       const data = await response.json();
       setProjects(
         Array.isArray(data.projects) ? data.projects.filter((p) => p && p.project_name) : []
@@ -55,7 +58,7 @@ const ProjectPage = () => {
     if (!selectedProject) return;
 
     try {
-      const response = await fetch("http://localhost:7071/delete_project", {
+      const response = await fetch(`${BASE_URL}/delete_project`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_name: projectName }),
@@ -85,7 +88,7 @@ const ProjectPage = () => {
 
     setIsRegistering(true);
     try {
-      const response = await fetch("http://localhost:7071/resist_project", {
+      const response = await fetch(`${BASE_URL}/resist_project`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_name: projectName, spo_url: spoUrl }),
