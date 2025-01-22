@@ -9,10 +9,11 @@ import { GlobalStyles } from '@mui/material';
 
 // APIのベースURLを設定
 const BASE_URL ="https://func-rag.azurewebsites.net";
+// const BASE_URL ="http://localhost:7071";
 
 // 初期値などを定数化して管理
-const INITIAL_PROJECT = "ALL";
-const INITIAL_FOLDER = "NONE";
+const INITIAL_PROJECT = "PROJECT_ALL";
+const INITIAL_FOLDER = "FOLDER_ALL";
 
 const HomePage = () => {
   // --- ステート管理 ---
@@ -21,8 +22,8 @@ const HomePage = () => {
   const [isGenerating, setIsGenerating] = useState(false); //メッセージの応答生成中かを示すフラグ
 
   // プロジェクトとフォルダのステート
-  const [projects, setProjects] = useState([]);        //利用可能なプロジェクト一覧
-  const [folders, setFolders] = useState([]);          //利用可能なフォルダ一覧
+  const [projects, setProjects] = useState([]); //利用可能なプロジェクト一覧
+  const [folders, setFolders] = useState([]);   //利用可能なフォルダ一覧
 
   const [selectedProject, setSelectedProject] = useState(INITIAL_PROJECT); 
   const [selectedFolder, setSelectedFolder] = useState(INITIAL_FOLDER);
