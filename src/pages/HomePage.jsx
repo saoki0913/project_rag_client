@@ -1,87 +1,133 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import SideBar from "../components/SideBar";
 import TextInput from "../components/TextInput";
 import ChatArea from "../components/ChatArea";
 import logo from "../assets/logo.png"; // ロゴ画像をインポート
-import { Box, TextField, Button } from "@mui/material";
+import { Box, TextField, Button } from "@mui/material"; // CircularProgressを追加
 import { useNavigate } from "react-router-dom";
 import { GlobalStyles } from '@mui/material';
 
+// APIのベースURLを設定
+const BASE_URL ="https://func-rag.azurewebsites.net" ;
 
-
+// 初期値などを定数化して管理
+const INITIAL_PROJECT = "ALL";
+const INITIAL_FOLDER = "NONE";
 
 const HomePage = () => {
-  const [chatHistory, setChatHistory] = useState([]);//チャット履歴を格納する配列
-  const [messages, setMessages] = useState([]); //現在のチャットセッションのメッセージリスト
-  const [isGenerating, setIsGenerating] = useState(false);//メッセージの応答生成中かを示すフラグ
-  const [projects, setProjects] = useState([]);//利用可能なプロジェクト一覧
-  const [folders, setFolders] = useState([]);//利用可能なフォルダ一覧
-  const [selectedProject, setSelectedProject] = useState("ALL");//現在選択されているプロジェクト名
-  const [selectedFolder, setSelectedFolder] = useState("all");//現在選択されているフォルダ名
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);//サイドバーが開いているかを示すフラグ
-  const hasDisplayedWarning = useRef(false); // 警告表示を追跡するフラグ
+  // --- ステート管理 ---
+  const [chatHistory, setChatHistory] = useState([]);  //チャット履歴を格納する配列
+  const [messages, setMessages] = useState([]);        //現在のチャットセッションのメッセージリスト
+  const [isGenerating, setIsGenerating] = useState(false); //メッセージの応答生成中かを示すフラグ
+
+  // プロジェクトとフォルダのステート
+  const [projects, setProjects] = useState([]);        //利用可能なプロジェクト一覧
+  const [folders, setFolders] = useState([]);          //利用可能なフォルダ一覧
+
+  const [selectedProject, setSelectedProject] = useState(INITIAL_PROJECT); 
+  const [selectedFolder, setSelectedFolder] = useState(INITIAL_FOLDER);
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); //サイドバーが開いているかを示すフラグ
+  const hasDisplayedWarning = useRef(false);                //警告表示を追跡するフラグ
+
+  // ローディング状態のステートを追加（プロジェクト一覧、フォルダ一覧の取得用）
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingFolders, setLoadingFolders] = useState(false);
 
   const navigate = useNavigate();
 
-  //プロジェクト一覧を取得する非同期関数
-  const fetchProjects = async () => {
-    try {
-      const response = await fetch("http://localhost:7071/projects");
-      const data = await response.json();
-      setProjects(
-        Array.isArray(data.projects) ? data.projects.filter((p) => p && p.project_name) : []
-      );
-    } catch (error) {
-      console.error("エラー: プロジェクト一覧の取得に失敗しました。", error);
+  // ===========================
+  // ① プロジェクト一覧を取得
+  // ===========================
+  // コンポーネントのマウント時に一度だけ実行
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      try {
+        const response = await fetch(`${BASE_URL}/projects`);
+        const data = await response.json();
+        const validProjects = Array.isArray(data.projects)
+          ? data.projects.filter((p) => p && p.project_name)
+          : [];
+        setProjects(validProjects);
+      } catch (error) {
+        console.error("エラー: プロジェクト一覧の取得に失敗しました。", error);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    fetchProjects();
+  }, []); 
+  // [] で依存リストを空にすることで、初回マウント時にのみ実行
+
+  // =============================
+  // ② フォルダ一覧を取得する関数
+  // =============================
+  // selectedProjectが切り替わったときに自動で実行する
+  useEffect(() => {
+    // ALLが選択されている場合はフォルダ一覧をクリアして早期return
+    if (selectedProject === INITIAL_PROJECT) {
+      setFolders([]);
+      return;
     }
-  };
 
-  // フォルダ一覧を取得する非同期関数
-  const fetchFolders = async () => {
-    try {
-      const response = await fetch("http://localhost:7071/get_spo_folders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          project_name: selectedProject
-         }),
-      });
-      const data = await response.json();
+    const fetchFolders = async () => {
+      setLoadingFolders(true);
+      try {
+        const response = await fetch(`${BASE_URL}/get_spo_folders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            project_name: selectedProject,
+          }),
+        });
+        const data = await response.json();
+        setFolders(Array.isArray(data.folders) ? data.folders : []);
+      } catch (error) {
+        console.error("エラー: フォルダ一覧の取得に失敗しました。", error);
+      } finally {
+        setLoadingFolders(false);
+      }
+    };
 
-      // 'folders' フィールドが配列か確認して状態にセット
-      setFolders(Array.isArray(data.folders) ? data.folders : []);
-    } catch (error) {
-      console.error("エラー: フォルダ一覧の取得に失敗しました。", error);
-    }
-  };
+    fetchFolders();
+  }, [selectedProject]); 
+  // [selectedProject] を依存配列に指定 -> project が変わるたびに呼び出し
 
-  
-  // ドロップダウンでプロジェクトを選択した際に呼び出され,selectedProjectを更新する関数
+  // ========================
+  // ③ ドロップダウンの操作
+  // ========================
   const handleSelectProject = (event) => {
     setSelectedProject(event.target.value);
+    // プロジェクト切り替え時に選択フォルダを初期化
+    setSelectedFolder(INITIAL_FOLDER);
     hasDisplayedWarning.current = false; // プロジェクト選択時にフラグをリセット
   };
 
-  // ドロップダウンでプロジェクトを選択した際に呼び出され,selectedProjectを更新する関数
-  const handleSelectFolders = (event) => {
+  const handleSelectFolder = (event) => {
     setSelectedFolder(event.target.value);
   };
 
-  // メッセージ入力欄がフォーカスされたときにプロジェクト選択を確認する関数
+  // ==================================
+  // ④ メッセージ入力フォーカス時の警告
+  // ==================================
   const handleFocusMessageInput = () => {
-    if (!selectedProject || selectedProject === "ALL") {
-      // 警告がまだ表示されていない場合のみ表示
+    // プロジェクトが未選択(ALL)の場合
+    if (!selectedProject || selectedProject === INITIAL_PROJECT) {
       if (!hasDisplayedWarning.current) {
         alert("プロジェクトは選択されていませんがよろしいですか？");
-        hasDisplayedWarning.current = true; // フラグを設定
+        hasDisplayedWarning.current = true;
       }
     }
   };
   
-  // ユーザーがメッセージを送信した際に呼び出される関数
+  // ===================================
+  // ⑤ ユーザーがメッセージ送信した際
+  // ===================================
   const handleSendMessage = async (text) => {
-    // selectedProjectが未選択の場合、警告を表示する．
-    if (!selectedProject) {
+    // selectedProjectが未選択orALLの場合、警告を表示
+    if (!selectedProject || selectedProject === INITIAL_PROJECT) {
       alert("プロジェクトを選択してください。");
       return;
     }
@@ -92,17 +138,18 @@ const HomePage = () => {
 
     try {
       // APIエンドポイントにユーザーの質問を送信
-      const response = await fetch("http://localhost:7071/answer", {
+      const response = await fetch(`${BASE_URL}/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           user_question: text, 
           project_name: selectedProject,
-          ...(selectedFolder && { folder_name: selectedFolder }) // 選択されていれば追加
-         }),
+          ...(selectedFolder && { folder_name: selectedFolder }) 
+        }),
       });
+
       const data = await response.json();
-      const { answer, documentUrl=[], documentName=[], last_modified=[] } = data;
+      const { answer, documentUrl = [], documentName = [], last_modified = [] } = data;
       
       // 回答メッセージの生成
       const answerMessage = {
@@ -118,14 +165,17 @@ const HomePage = () => {
                     <li key={index}>
                       {name}（
                       {documentUrl[index] ? (
-                        <a href={documentUrl[index]} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={documentUrl[index]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           {documentUrl[index]}
                         </a>
                       ) : (
                         "URLなし"
                       )}
-                      ）
-                      <br />
+                      ）<br />
                       最終更新: {last_modified[index] || "更新日時なし"}
                     </li>
                   ))}
@@ -153,24 +203,33 @@ const HomePage = () => {
       setIsGenerating(false);
     }
   };
-  // チャット履歴をクリックした際に、その履歴をmessages状態に復元
+
+  // ======================================
+  // ⑥ チャット履歴を選択した際に復元
+  // ======================================
   const handleSelectChat = (chat) => {
     setMessages(chat.messages);
   };
-  // サイドバーの開閉状態を切り替える
+
+  // ==========================
+  // ⑦ サイドバーの開閉切り替え
+  // ==========================
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  // =======================
+  //     レンダリング部
+  // =======================
   return (
     <div>
-      {/*Material-UIの GlobalStylesを使用し，CSSを適応*/}
+      {/* Material-UIの GlobalStylesを使用し，CSSを適応 */}
       <GlobalStyles
-          styles={{
-              html: { height: '100%' },
-              body: { height: '100%', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' },
-              '#root': { height: '100%' },
-          }}
+        styles={{
+          html: { height: '100%' },
+          body: { height: '100%', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' },
+          '#root': { height: '100%' },
+        }}
       />
 
       <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -188,7 +247,6 @@ const HomePage = () => {
             flexGrow: 1,
             display: "flex",
             flexDirection: "column"
-
           }}
         >
           {/* ヘッダー */}
@@ -207,11 +265,11 @@ const HomePage = () => {
           >
             <img src={logo} alt="Company Logo" style={{ height: "35px", marginLeft: "45px" }} />
             <Box sx={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              {/* プロジェクト選択 */}
               <TextField
                 select
                 label="プロジェクトを選択"
                 value={selectedProject}
-                onClick={fetchProjects}
                 onChange={handleSelectProject}
                 size="small"
                 sx={{
@@ -228,20 +286,24 @@ const HomePage = () => {
                   sx: { fontSize: "0.75rem" },
                 }}
               >
-                <option value="ALL">ALL</option>
-                {projects.map((project, index) => (
+                <option value={INITIAL_PROJECT}>ALL</option>
+                {loadingProjects && (
+                  <option>読み込み中...</option>
+                )}
+                {!loadingProjects && projects.map((project, index) => (
                   <option key={index} value={project.project_name}>
                     {project.project_name}
                   </option>
                 ))}
               </TextField>
-              {selectedProject !== "ALL" && (
+
+              {/* フォルダ／ファイル選択 (プロジェクトがALLの場合は非表示) */}
+              {selectedProject !== INITIAL_PROJECT && (
                 <TextField
                   select
-                  label="フォルダ、ファイルを選択"
+                  label="フォルダ／ファイルを選択"
                   value={selectedFolder}
-                  onClick={fetchFolders}
-                  onChange={handleSelectFolders}
+                  onChange={handleSelectFolder}
                   size="small"
                   sx={{
                     backgroundColor: "#fff",
@@ -257,8 +319,11 @@ const HomePage = () => {
                     sx: { fontSize: "0.75rem" },
                   }}
                 >
-                  <option value="all">未選択</option>
-                  {folders.map((folder, index) => (
+                  <option value={INITIAL_FOLDER}>未選択</option>
+                  {loadingFolders && (
+                    <option>読み込み中...</option>
+                  )}
+                  {!loadingFolders && folders.map((folder, index) => (
                     <option key={index} value={folder}>
                       {folder}
                     </option>
@@ -283,16 +348,16 @@ const HomePage = () => {
             </Box>
           </Box>
 
-        {/* メインコンテンツ */}
+          {/* メインコンテンツ */}
           <Box
             sx={{
               flexGrow: 1,
-              marginRight:"-10px",
+              marginRight: "-10px",
               padding: "8px",
               backgroundColor: "white",
-              borderBottom: "none", // フッターとの境界線を削除,
-              overflowX: "hidden", // スクロールをなくす設定
-              overflowY: "hidden", // スクロールをなくす設定
+              borderBottom: "none", 
+              overflowX: "hidden",
+              overflowY: "hidden",
             }}
           >
             <ChatArea messages={messages} isGenerating={isGenerating} />
@@ -317,6 +382,5 @@ const HomePage = () => {
     </div>
   );
 };
-
 
 export default HomePage;

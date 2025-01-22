@@ -8,7 +8,7 @@ import {
   Button,
 } from "@mui/material";
 
-const DeleteConfirmationDialog = ({
+const DeleteDialog = ({
   open,
   onClose,
   onConfirm,
@@ -87,4 +87,4 @@ const DeleteConfirmationDialog = ({
   );
 };
 
-export default DeleteConfirmationDialog;
+export default DeleteDialog;
