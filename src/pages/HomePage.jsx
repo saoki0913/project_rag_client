@@ -9,8 +9,8 @@ import { GlobalStyles } from '@mui/material';
 
 
 // APIのベースURLを設定
-// const BASE_URL ="https://func-rag.azurewebsites.net";
-const BASE_URL ="http://localhost:7071";
+const BASE_URL ="https://func-rag.azurewebsites.net";
+// const BASE_URL ="http://localhost:7071";
 
 // 初期値などを定数化して管理
 const INITIAL_PROJECT = "PROJECT_ALL";
