@@ -8,8 +8,8 @@ import ProjectTable from "../components/ProjectTable";
 import DeleteDialog from "../components/DeleteDialog";
 
 // APIのベースURLを設定
-const BASE_URL ="https://func-rag.azurewebsites.net";
-// const BASE_URL ="http://localhost:7071";
+// const BASE_URL ="https://func-rag.azurewebsites.net";
+const BASE_URL ="http://localhost:7071";
 
 
 const ProjectPage = () => {
@@ -23,6 +23,8 @@ const ProjectPage = () => {
   const [alert, setAlert] = useState({ type: "", message: "" });
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [includeRootFiles, setIncludeRootFiles] = useState(false);
+
 
   const navigate = useNavigate();
 
@@ -93,7 +95,11 @@ const ProjectPage = () => {
       const response = await fetch(`${BASE_URL}/resist_project`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_name: projectName, spo_url: spoUrl }),
+        body: JSON.stringify({ 
+          project_name: projectName, 
+          spo_url: spoUrl,
+          include_root_files: includeRootFiles,
+         }),
       });
       const data = await response.json();
       setProjects((prevProjects) => [
@@ -104,9 +110,9 @@ const ProjectPage = () => {
       await fetchProjects();
       setProjectName("");
       setSpoUrl("");
+      setIncludeRootFiles(false);
     } catch (error) {
-      console.error("エラー: プロジェクト登録に失敗しました。", error);
-      alert("プロジェクト登録中にエラーが発生しました。");
+      setAlert({ type: "error", message: "プロジェクトの登録に失敗しました。" });
     } finally {
       setIsRegistering(false);
     }
@@ -152,6 +158,8 @@ const ProjectPage = () => {
                   setSpoUrl={setSpoUrl}
                   isRegistering={isRegistering}
                   onRegister={handleRegisterProject}
+                  includeRootFiles={includeRootFiles} 
+                  setIncludeRootFiles={setIncludeRootFiles} 
                 />
               </Box>
               <Box sx={{ flexGrow: 1, height: "calc(100vh - 100px)" }}>

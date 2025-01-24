@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, TextField, Typography, Button, CircularProgress } from "@mui/material";
+import { Box, TextField, Typography, Button, CircularProgress, Checkbox, FormControlLabel } from "@mui/material";
 
 const ProjectForm = ({
   projectName,
@@ -8,6 +8,8 @@ const ProjectForm = ({
   setSpoUrl,
   isRegistering,
   onRegister,
+  includeRootFiles,
+  setIncludeRootFiles, 
 }) => {
   return (
     <Box
@@ -38,6 +40,33 @@ const ProjectForm = ({
         onChange={(e) => setSpoUrl(e.target.value)}
         sx={{ fontSize: "0.75rem", mt: 1 }}
         InputLabelProps={{ style: { fontSize: "1rem" } }}
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            sx={{
+              color: "primary.main", 
+              "&.Mui-checked": {
+                color: "primary.main", 
+              },
+              mt: -1.0, // チェックボックスの垂直位置調整
+            }}
+            checked={includeRootFiles}
+            onChange={(e) => setIncludeRootFiles(e.target.checked)}
+          />
+        }
+        label={
+          <Box
+            component="span"
+            sx={{
+              fontSize: "0.9rem",
+              lineHeight: 1,
+              color: "text.primary", 
+            }}
+          >
+            サイト直下のファイルを含める
+          </Box>
+        }
       />
       <Button
         variant="contained"

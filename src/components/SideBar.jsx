@@ -114,7 +114,7 @@ const SideBar = ({
                 </IconButton>
               </Tooltip>
               <Tooltip title="設定">
-                <IconButton>
+                <IconButton onClick={() => navigate("/setting")}>
                   <SettingsIcon />
                 </IconButton>
               </Tooltip>

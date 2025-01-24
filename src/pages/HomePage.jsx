@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import SideBar from "../components/SideBar";
 import TextInput from "../components/TextInput";
 import ChatArea from "../components/ChatArea";
@@ -7,16 +7,18 @@ import { Box, TextField, Button } from "@mui/material"; // CircularProgressを�
 import { useNavigate } from "react-router-dom";
 import { GlobalStyles } from '@mui/material';
 
+
 // APIのベースURLを設定
-const BASE_URL ="https://func-rag.azurewebsites.net";
-// const BASE_URL ="http://localhost:7071";
+// const BASE_URL ="https://func-rag.azurewebsites.net";
+const BASE_URL ="http://localhost:7071";
 
 // 初期値などを定数化して管理
 const INITIAL_PROJECT = "PROJECT_ALL";
 const INITIAL_FOLDER = "FOLDER_ALL";
+const INITIAL_SUBFOLDER = "SUBFOLDER_ALL";
 
 const HomePage = () => {
-  // --- ステート管理 ---
+  // ステート管理 
   const [chatHistory, setChatHistory] = useState([]);  //チャット履歴を格納する配列
   const [messages, setMessages] = useState([]);        //現在のチャットセッションのメッセージリスト
   const [isGenerating, setIsGenerating] = useState(false); //メッセージの応答生成中かを示すフラグ
@@ -24,9 +26,11 @@ const HomePage = () => {
   // プロジェクトとフォルダのステート
   const [projects, setProjects] = useState([]); //利用可能なプロジェクト一覧
   const [folders, setFolders] = useState([]);   //利用可能なフォルダ一覧
+  const [subfolders, setSubFolders] = useState([]);   //利用可能なサブフォルダ一覧
 
   const [selectedProject, setSelectedProject] = useState(INITIAL_PROJECT); 
   const [selectedFolder, setSelectedFolder] = useState(INITIAL_FOLDER);
+  const [selectedSubFolder, setSelectedSubFolder] = useState(INITIAL_SUBFOLDER);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); //サイドバーが開いているかを示すフラグ
   const hasDisplayedWarning = useRef(false);                //警告表示を追跡するフラグ
@@ -34,37 +38,33 @@ const HomePage = () => {
   // ローディング状態のステートを追加（プロジェクト一覧、フォルダ一覧の取得用）
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [loadingFolders, setLoadingFolders] = useState(false);
+  const [loadingSubFolders, setLoadingSubFolders] = useState(false);
 
   const navigate = useNavigate();
 
-  // ===========================
-  // ① プロジェクト一覧を取得
-  // ===========================
-  // コンポーネントのマウント時に一度だけ実行
+  // プロジェクト一覧を取得
+  const fetchProjects = useCallback(async () => {
+    setLoadingProjects(true);
+    try {
+      const response = await fetch(`${BASE_URL}/projects`);
+      const data = await response.json();
+      const validProjects = Array.isArray(data.projects)
+        ? data.projects.filter((p) => p && p.project_name)
+        : [];
+      setProjects(validProjects);
+    } catch (error) {
+      console.error("エラー: プロジェクト一覧の取得に失敗しました。", error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []); // 依存配列が空なので、関数が再生成されるのは初回レンダリング時のみ
+
+ 
   useEffect(() => {
-    const fetchProjects = async () => {
-      setLoadingProjects(true);
-      try {
-        const response = await fetch(`${BASE_URL}/projects`);
-        const data = await response.json();
-        const validProjects = Array.isArray(data.projects)
-          ? data.projects.filter((p) => p && p.project_name)
-          : [];
-        setProjects(validProjects);
-      } catch (error) {
-        console.error("エラー: プロジェクト一覧の取得に失敗しました。", error);
-      } finally {
-        setLoadingProjects(false);
-      }
-    };
-
     fetchProjects();
-  }, []); 
-  // [] で依存リストを空にすることで、初回マウント時にのみ実行
+  }, [fetchProjects]); // fetchProjectsが依存関係として指定されている
 
-  // =============================
-  // ② フォルダ一覧を取得する関数
-  // =============================
+  // フォルダ一覧を取得する関数
   // selectedProjectが切り替わったときに自動で実行する
   useEffect(() => {
     // ALLが選択されている場合はフォルダ一覧をクリアして早期return
@@ -96,9 +96,41 @@ const HomePage = () => {
   }, [selectedProject]); 
   // [selectedProject] を依存配列に指定 -> project が変わるたびに呼び出し
 
-  // ========================
-  // ③ ドロップダウンの操作
-  // ========================
+  // サブフォルダ一覧を取得する関数
+  // selectedFolderが切り替わったときに自動で実行する
+  useEffect(() => {
+    // ALLが選択されている場合はフォルダ一覧をクリアして早期return
+    if (selectedFolder === INITIAL_FOLDER) {
+      setSubFolders([]);
+      return;
+    }
+
+    const fetchSubFolders = async () => {
+      setLoadingSubFolders(true);
+      try {
+        const response = await fetch(`${BASE_URL}/get_spo_subfolders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            project_name: selectedProject,
+            folder_name: selectedFolder
+          }),
+        });
+        const data = await response.json();
+        setSubFolders(Array.isArray(data.subfolders) ? data.subfolders : []);
+      } catch (error) {
+        console.error("エラー: サブフォルダ一覧の取得に失敗しました。", error);
+      } finally {
+        setLoadingSubFolders(false);
+      }
+    };
+
+    fetchSubFolders();
+  }, [selectedProject, selectedFolder]); 
+  // [selectedFolder] を依存配列に指定 -> folder が変わるたびに呼び出し
+
+
+  // ドロップダウンの操作
   const handleSelectProject = (event) => {
     setSelectedProject(event.target.value);
     // プロジェクト切り替え時に選択フォルダを初期化
@@ -110,9 +142,11 @@ const HomePage = () => {
     setSelectedFolder(event.target.value);
   };
 
-  // ==================================
-  // ④ メッセージ入力フォーカス時の警告
-  // ==================================
+  const handleSelectSubFolder = (event) => {
+    setSelectedSubFolder(event.target.value);
+  };
+
+  // メッセージ入力フォーカス時の警告
   const handleFocusMessageInput = () => {
     // プロジェクトが未選択(ALL)の場合
     if (!selectedProject || selectedProject === INITIAL_PROJECT) {
@@ -123,9 +157,7 @@ const HomePage = () => {
     }
   };
   
-  // ===================================
-  // ⑤ ユーザーがメッセージ送信した際
-  // ===================================
+  // ユーザーがメッセージ送信した際
   const handleSendMessage = async (text) => {
     // selectedProjectが未選択orALLの場合、警告を表示
     if (!selectedProject || selectedProject === INITIAL_PROJECT) {
@@ -145,7 +177,8 @@ const HomePage = () => {
         body: JSON.stringify({ 
           user_question: text, 
           project_name: selectedProject,
-          ...(selectedFolder && { folder_name: selectedFolder }) 
+          ...(selectedFolder && { folder_name: selectedFolder }) ,
+          ...(selectedSubFolder && { subfolder_name: selectedSubFolder }) 
         }),
       });
 
@@ -205,23 +238,18 @@ const HomePage = () => {
     }
   };
 
-  // ======================================
-  // ⑥ チャット履歴を選択した際に復元
-  // ======================================
+  // チャット履歴を選択した際に復元
   const handleSelectChat = (chat) => {
     setMessages(chat.messages);
   };
 
-  // ==========================
-  // ⑦ サイドバーの開閉切り替え
-  // ==========================
+  // サイドバーの開閉切り替え
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // =======================
-  //     レンダリング部
-  // =======================
+
+  // レンダリング部
   return (
     <div>
       {/* Material-UIの GlobalStylesを使用し，CSSを適応 */}
@@ -327,6 +355,39 @@ const HomePage = () => {
                   {!loadingFolders && folders.map((folder, index) => (
                     <option key={index} value={folder}>
                       {folder}
+                    </option>
+                  ))}
+                </TextField>
+              )}
+              {/* サブフォルダ／ファイル選択 (フォルダが未選択の場合は非表示) */}
+              {selectedFolder !== INITIAL_FOLDER && (
+                <TextField
+                  select
+                  label="サブフォルダを選択"
+                  value={selectedSubFolder}
+                  onChange={handleSelectSubFolder}
+                  size="small"
+                  sx={{
+                    backgroundColor: "#fff",
+                    borderRadius: "4px",
+                    width: "150px",
+                    minWidth: "120px"
+                  }}
+                  InputLabelProps={{
+                    style: { fontSize: "0.75rem" },
+                  }}
+                  SelectProps={{
+                    native: true,
+                    sx: { fontSize: "0.75rem" },
+                  }}
+                >
+                  <option value={INITIAL_SUBFOLDER}>未選択</option>
+                  {loadingSubFolders && (
+                    <option>読み込み中...</option>
+                  )}
+                  {!loadingSubFolders && subfolders.map((subfolder, index) => (
+                    <option key={index} value={subfolder}>
+                      {subfolder}
                     </option>
                   ))}
                 </TextField>
