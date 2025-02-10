@@ -1,5 +1,14 @@
-import React from "react";
-import { Box, TextField, Typography, Button, CircularProgress, Checkbox, FormControlLabel } from "@mui/material";
+"use client";
+import React, { useState } from "react";
+import {
+  Box,
+  TextField,
+  Typography,
+  Button,
+  CircularProgress,
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
 
 const ProjectForm = ({
   projectName,
@@ -9,8 +18,25 @@ const ProjectForm = ({
   isRegistering,
   onRegister,
   includeRootFiles,
-  setIncludeRootFiles, 
+  setIncludeRootFiles,
 }) => {
+  // プロジェクト名のエラー状態を管理
+  const [projectNameError, setProjectNameError] = useState("");
+
+  // プロジェクト名に半角英数字のみ許可するバリデーション
+  const handleProjectNameChange = (e) => {
+    const value = e.target.value;
+    // 空の場合も許容するため * を利用
+    const pattern = /^[A-Za-z0-9-]*$/;
+    if (!pattern.test(value)) {
+      setProjectNameError("半角英数字とハイフンのみ使用できます。");
+    } else {
+      setProjectNameError("");
+    }
+    // 親から渡された setProjectName を呼び出して状態更新
+    setProjectName(value);
+  };
+
   return (
     <Box
       sx={{
@@ -24,13 +50,19 @@ const ProjectForm = ({
         backgroundColor: "#f9f9f9",
       }}
     >
-      <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: "bold" }} gutterBottom>
+      <Typography
+        variant="h6"
+        sx={{ fontSize: "1rem", fontWeight: "bold" }}
+        gutterBottom
+      >
         プロジェクト登録
       </Typography>
       <TextField
         label="プロジェクト名"
         value={projectName}
-        onChange={(e) => setProjectName(e.target.value)}
+        onChange={handleProjectNameChange}
+        error={!!projectNameError}
+        helperText={projectNameError}
         sx={{ fontSize: "0.75rem", mt: 1 }}
         InputLabelProps={{ style: { fontSize: "1rem" } }}
       />
@@ -45,11 +77,11 @@ const ProjectForm = ({
         control={
           <Checkbox
             sx={{
-              color: "primary.main", 
+              color: "primary.main",
               "&.Mui-checked": {
-                color: "primary.main", 
+                color: "primary.main",
               },
-              mt: -1.0, // チェックボックスの垂直位置調整
+              mt: -1.0,
             }}
             checked={includeRootFiles}
             onChange={(e) => setIncludeRootFiles(e.target.checked)}
@@ -61,7 +93,7 @@ const ProjectForm = ({
             sx={{
               fontSize: "0.9rem",
               lineHeight: 1,
-              color: "text.primary", 
+              color: "text.primary",
             }}
           >
             サイト直下のファイルを含める
@@ -80,9 +112,7 @@ const ProjectForm = ({
           color: "#fff",
         }}
         startIcon={
-          isRegistering && (
-            <CircularProgress size={16} sx={{ color: "#ffffff" }} />
-          )
+          isRegistering && <CircularProgress size={16} sx={{ color: "#ffffff" }} />
         }
       >
         {isRegistering ? "登録中..." : "登録"}

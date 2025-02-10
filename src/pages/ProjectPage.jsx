@@ -8,8 +8,8 @@ import ProjectTable from "../components/ProjectTable";
 import DeleteDialog from "../components/DeleteDialog";
 
 // APIのベースURLを設定
-const BASE_URL ="https://func-rag.azurewebsites.net";
-//const BASE_URL ="http://localhost:7071";
+// const BASE_URL ="https://func-rag.azurewebsites.net";
+const BASE_URL ="http://localhost:7071";
 
 
 const ProjectPage = () => {
